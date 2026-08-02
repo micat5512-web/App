@@ -1,15 +1,4 @@
-name: Compilar APK Android
-
-on:
-push:
-branches: [ "main", "master" ]
-workflow_dispatch:
-
-jobs:
-build:
-runs-on: ubuntu-latest
-
-steps:
+name: Compilar APK Androidon:push:branches: [ "main", "master" ]workflow_dispatch:jobs:build:runs-on: ubuntu-lateststeps:
 - uses: actions/checkout@v4
 
 - name: Configurar Java 17
