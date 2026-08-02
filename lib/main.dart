@@ -1,21 +1,81 @@
-<!-- ... existing code ... -->
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 
 void main() {
-<!-- ... existing code ... -->
+  runApp(const PresupuestoApp());
+}
+
+class PresupuestoApp extends StatelessWidget {
+  const PresupuestoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Gastos Ruth',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        useMaterial3: true,
+      ),
+      home: const HomeScreen(),
+    );
+  }
+}
+
+class Transaccion {
+  final String id;
+  final String titulo;
+  final double monto;
+  final bool esGasto;
+  final String categoria;
+  final DateTime fecha;
+
+  Transaccion({
+    required this.id,
+    required this.titulo,
+    required this.monto,
+    required this.esGasto,
+    required this.categoria,
+    required this.fecha,
+  });
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'titulo': titulo,
+        'monto': monto,
+        'esGasto': esGasto,
+        'categoria': categoria,
+        'fecha': fecha.toIso8601String(),
+      };
+
+  factory Transaccion.fromMap(Map<String, dynamic> map) => Transaccion(
+        id: map['id'],
+        titulo: map['titulo'],
+        monto: (map['monto'] as num).toDouble(),
+        esGasto: map['esGasto'],
+        categoria: map['categoria'],
+        fecha: DateTime.parse(map['fecha']),
+      );
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
 class _HomeScreenState extends State<HomeScreen> {
   List<Transaccion> _transacciones = [];
   final double _limitePresupuesto = 1000.0;
   String _filtroHistorial = 'Todos';
 
-  // Lista de categorías disponibles
+  // Lista de categorías disponibles (sin Pasajes)
   final List<String> _categorias = [
     'Alimentación',
     'Transporte',
-    'Pasajes',
     'Comida Mascotas',
     'Servicios',
     'Entretenimiento',
@@ -29,10 +89,49 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _cargarDatos() async {
-<!-- ... existing code ... -->
+    final prefs = await SharedPreferences.getInstance();
+    final String? data = prefs.getString('transacciones');
+    if (data != null) {
+      final List<dynamic> jsonList = jsonDecode(data);
+      setState(() {
+        _transacciones = jsonList.map((x) => Transaccion.fromMap(x)).toList();
+      });
+    }
+  }
+
+  Future<void> _guardarDatos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String data = jsonEncode(_transacciones.map((x) => x.toMap()).toList());
+    await prefs.setString('transacciones', data);
+  }
+
+  void _agregarTransaccion(String titulo, double monto, bool esGasto, String categoria) {
+    setState(() {
+      _transacciones.insert(
+        0,
+        Transaccion(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          titulo: titulo,
+          monto: monto,
+          esGasto: esGasto,
+          categoria: categoria,
+          fecha: DateTime.now(),
+        ),
+      );
+    });
+    _guardarDatos();
+  }
+
+  double get _totalIngresos => _transacciones
+      .where((t) => !t.esGasto)
+      .fold(0.0, (sum, item) => sum + item.monto);
+
+  double get _totalGastos => _transacciones
+      .where((t) => t.esGasto)
+      .fold(0.0, (sum, item) => sum + item.monto);
+
   double get _saldoTotal => _totalIngresos - _totalGastos;
 
-  // Filtrado de transacciones
   List<Transaccion> get _transaccionesFiltradas {
     if (_filtroHistorial == 'Ingresos') {
       return _transacciones.where((t) => !t.esGasto).toList();
@@ -69,28 +168,38 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               TextField(
                 controller: montoController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Monto (\$)'),
               ),
+              const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Tipo:'),
-                  FilterChip(
-                    label: Text(esGasto ? 'Gasto' : 'Ingreso'),
-                    selected: esGasto,
-                    onSelected: (val) => setModalState(() => esGasto = val),
-                    selectedColor: Colors.redAccent.shade100,
+                  const Text('Tipo:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: true, label: Text('Gasto')),
+                      ButtonSegment(value: false, label: Text('Ingreso')),
+                    ],
+                    selected: {esGasto},
+                    onSelectionChanged: (val) {
+                      setModalState(() => esGasto = val.first);
+                    },
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
               DropdownButton<String>(
                 value: categoria,
                 isExpanded: true,
                 items: _categorias
                     .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
                     .toList(),
-                onChanged: (val) => setModalState(() => categoria = val!),
+                onChanged: (val) {
+                  if (val != null) {
+                    setModalState(() => categoria = val);
+                  }
+                },
               ),
               const SizedBox(height: 15),
               ElevatedButton(
@@ -109,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Ventana para ver y copiar el reporte de gastos de la semana
   void _mostrarModalReporteSemanal(BuildContext context) {
     final ahora = DateTime.now();
     final hace7Dias = ahora.subtract(const Duration(days: 7));
@@ -156,7 +264,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                maxHeight: 200,
+                constraints: const BoxConstraints(maxHeight: 200),
                 child: SingleChildScrollView(
                   child: Text(
                     reporteTexto,
@@ -196,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mi Presupuesto App'),
+        title: const Text('Gastos Ruth'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -211,7 +319,46 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // Tarjeta de Balance General
             Card(
-<!-- ... existing code ... -->
+              margin: const EdgeInsets.all(16),
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Text('Saldo Total', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                    Text(
+                      '\$${_saldoTotal.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: _saldoTotal >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    const Divider(height: 30),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            const Text('Ingresos', style: TextStyle(color: Colors.green)),
+                            Text('+\$${_totalIngresos.toStringAsFixed(2)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            const Text('Gastos', style: TextStyle(color: Colors.red)),
+                            Text('-\$${_totalGastos.toStringAsFixed(2)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // Barra de Límite de Presupuesto
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -270,8 +417,10 @@ class _HomeScreenState extends State<HomeScreen> {
             _transaccionesFiltradas.isEmpty
                 ? const Padding(
                     padding: EdgeInsets.all(20),
-                    child: Text('No hay transacciones registradas en este filtro.',
-                        style: TextStyle(color: Colors.grey)),
+                    child: Text(
+                      'No hay transacciones registradas en este filtro.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   )
                 : ListView.builder(
                     shrinkWrap: true,
