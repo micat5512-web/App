@@ -23,6 +23,9 @@ jobs:
       with:
         channel: 'stable'
 
+    - name: Generar estructura Android
+      run: flutter create --platforms=android .
+
     - name: Obtener dependencias
       run: flutter pub get
 
