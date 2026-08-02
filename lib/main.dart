@@ -363,7 +363,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         title: const Text('Nueva Categoría'),
         content: TextField(
           controller: catController,
-          decoration: const InputDecoration(hintText: 'Ej. Mascotas, Veterinaria...'),
+          decoration: const InputDecoration(hintText: 'Ej. Veterinario, Gimnasio...'),
         ),
         actions: [
           TextButton(
@@ -494,13 +494,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               Text('Gastos últimos 7 días: \$${totalSemanal.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(8),
-                color: Colors.grey.shade100,
-                maxHeight: 180,
-                child: SingleChildScrollView(
-                  child: Text(buffer.toString(),
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 180),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  color: Colors.grey.shade100,
+                  child: SingleChildScrollView(
+                    child: Text(buffer.toString(),
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                  ),
                 ),
               ),
             ],
@@ -874,7 +876,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Este saldo disponible se traslada automáticamente como punto de partida para cubrir los gastos e ingresos de la presente semana.',
-                    style: TextStyle(fontSize: 12, color: Colors.black64),
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                 ],
               ),
@@ -1008,3 +1010,4 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
     );
   }
+}
