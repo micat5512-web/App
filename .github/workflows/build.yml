@@ -1,4 +1,5 @@
-STREAMING_CHUNK:Configuring workflow name and triggers...name: Compilar APK Androidon:push:branches: [ "main", "master" ]workflow_dispatch:jobs:build:runs-on: ubuntu-lateststeps:
+STREAMING_CHUNK:Configuring workflow name and triggers...name: Compilar APK Android
+on:push:branches: [ "main", "master" ]workflow_dispatch:jobs:build:runs-on: ubuntu-lateststeps:
 # STREAMING_CHUNK:Checking out repository code...
 - uses: actions/checkout@v4
 
